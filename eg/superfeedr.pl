@@ -4,6 +4,13 @@ use Find::Lib '../lib';
 use Net::AppNotifications;
 use AnyEvent::Superfeedr;
 
+# connect to Superfeedr with <jid> and <pass>
+# and send up to 10 notifications to iPhone using appnotifications.com
+# configured with <key>.
+#
+# To get something to stream, we subscribe <jid> with friendfeed's public
+# timeline.
+
 my @subs = qw(
     http://friendfeed.com/public?format=atom
 );
