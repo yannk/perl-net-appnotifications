@@ -10,12 +10,17 @@ use URI::Escape 'uri_escape_utf8';
 use constant POST_URI =>
     q{https://www.appnotifications.com/account/notifications.xml};
 
-# TODO: get key from user/pass
+use constant KEY_URI =>
+    q{https://www.appnotifications.com/account/user_session.xml};
+
 sub new {
     my $class = shift;
     my %param = @_;
     my $notifier = bless { %param }, ref $class || $class;
-    croak "Key is needed" unless $param{key};
+    unless ($param{key}) {
+        $param{key} = $class->get_key( %param );
+    }
+    croak "Key (or valid email, pass to get it) is needed" unless $param{key};
     return $notifier;
 }
 
@@ -83,7 +88,13 @@ sub send {
         };
 
     } 
-    $notifier->post_request($key, $message, %cbs);
+    my $uri  = POST_URI;
+    my $body = build_body(
+        'user_credentials'      => $key,
+        'notification[message]' => $message,
+    );
+
+    $notifier->post_request($uri, $body, %cbs);
 
     ## wait here for synchronous calls
     $finish->();
@@ -92,10 +103,7 @@ sub send {
 
 sub post_request {
     my $notifier = shift;
-    my ($key, $message, %cbs) = @_;
-
-    my $uri  = POST_URI; 
-    my $body = build_body($key, $message);
+    my ($uri, $body, %cbs) = @_;
 
     http_request
         POST      => $uri,
@@ -115,11 +123,48 @@ sub post_request {
     return
 }
 
+sub get_key {
+    my $class = shift;
+
+    my $done = AnyEvent->condvar;
+    my $key;
+    my $got_key = sub { $key = shift; $done->send };
+
+    $class->async_get_key( @_, got_key => $got_key );
+
+    $done->recv;
+    return $key;
+}
+
+sub async_get_key {
+    my $class = shift;
+    my %param = shift;
+
+    my $email    = $param{email} or return;
+    my $password = $param{password};
+    my $uri      = KEY_URI;
+
+    my $body     = build_body(
+       'user_session[email]'    => $email,
+       'user_session[password]' => $password,
+    );
+    my %cbs = (
+        on_posted => sub {
+            my $key = shift;
+            $param{got_key}->($key);
+        },
+    );
+    $class->post_request($uri, $body, %cbs);
+    return;
+}
+
 sub build_body {
-    my ($key, $message) = @_;
-    return join "&", map { uri_escape_utf8($_) }
-            "user_credentials=$key",
-            "notification[message]=$message";
+    my %param = @_;
+    return
+        join "&", map {
+            join "=", $_, uri_escape_utf8($param{$_})
+        }
+        keys %param;
 }
 
 
@@ -136,7 +181,13 @@ Net::AppNotifications - send notifications to your iPhone.
 
 =head1 SYNOPSIS
 
-  use Net::AppNotifications;
+  $notifier = Net::AppNotifications->new(
+      email    => $registered_email,
+      password => $password,
+  );
+
+  # - or, prefered -
+
   $notifier = Net::AppNotifications->new(
       key => $key,
   );
@@ -155,6 +206,12 @@ Net::AppNotifications - send notifications to your iPhone.
     on_success => sub { $sent->send },
   );
   $sent->recv;
+
+  ## returns undef in case of error
+  $key = Net::AppNotifications->get_key(
+    email => $registered_email,
+    password => $password,
+  );
 
 =head1 DESCRIPTION
 
