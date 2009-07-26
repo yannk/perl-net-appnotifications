@@ -32,25 +32,28 @@ my $superfeedr; $superfeedr = AnyEvent::Superfeedr->new(
         cb => sub { [ shift @subs ] },
     },
     on_notification => sub { 
-        my $entry = shift;
-        my $title = Encode::decode_utf8($entry->title); 
-        $title =~ s/\s+/ /gs;
+        my $notification = shift;
 
-        my $l = length $title;
-        my $max = 50;
-        if ($l > $max) {
-            substr $title, $max - 3, $l - $max + 3, '...';
+        for my $entry ($notification->entries) {
+            my $title = Encode::decode_utf8($entry->title);
+            $title =~ s/\s+/ /gs;
+
+            my $l = length $title;
+            my $max = 50;
+            if ($l > $max) {
+                substr $title, $max - 3, $l - $max + 3, '...';
+            }
+
+            my $message = sprintf "~ %-50s\n", $title;
+            $notifier->send(
+                message    => $message,
+                on_success => sub { print "Delivered $message\n" },
+                on_error   => $end,
+            );
+
+            ## achevons la bete
+            $end->send if $n++ > 10;
         }
-
-        ## achevons la bete
-        $end->send if $n++ > 10;
-
-        my $message = sprintf "~ %-50s\n", $title;
-        $notifier->send(
-            message    => $message,
-            on_success => sub { print "Delivered $message\n" },
-            on_error   => $end,
-        );
     },
 );
 
