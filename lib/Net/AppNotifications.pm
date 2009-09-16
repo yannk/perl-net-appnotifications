@@ -67,8 +67,11 @@ sub send {
 
         my $early_error = $cbs{on_error} || sub { croak "$_[0]" }; 
 
-        my $on_success = $param{on_success}
-            or $early_error->("On success must be passed");
+        my $on_success = $param{on_success};
+        unless ($on_success) {
+            $early_error->("On success must be passed");
+            return;
+        }
 
         ## callback definitions
         $cbs{on_posted} = sub {
