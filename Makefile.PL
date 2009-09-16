@@ -2,7 +2,7 @@ use inc::Module::Install;
 name 'Net-AppNotifications';
 all_from 'lib/Net/AppNotifications.pm';
 
-requires 'Find::Lib'
+requires 'Find::Lib';
 requires 'AnyEvent';
 requires 'AnyEvent::HTTP';
 requires 'URI';
