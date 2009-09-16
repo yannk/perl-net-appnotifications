@@ -30,13 +30,15 @@ sub send {
     my %cbs;
     my $key    = $notifier->{key};
     my $finish = sub {};
-    my $message;
+    my %param;
 
     if (scalar @_ == 1) {
-        $message = shift;
+        my $message = shift;
         unless (defined $message && length $message) {
             croak "Please, give me a message to push";
         }
+        $param{message} = $message;
+
         my $done = AnyEvent->condvar;
 
         $cbs{on_posted} = sub {
@@ -59,9 +61,8 @@ sub send {
         };
     }
     else {
-        my %param = @_;
+        %param = @_;
 
-        $message = $param{message};
         $cbs{$_} = $param{$_} for qw{on_error on_timeout};
 
         my $early_error = $cbs{on_error} || sub { croak "$_[0]" }; 
@@ -86,19 +87,57 @@ sub send {
         $cbs{on_timeout} ||= sub {
             warn "Timeout: $_[0]";
         };
-
     } 
+    my $notification_params = $notifier->normalize(%param);
+
     my $uri  = POST_URI;
     my $body = build_body(
-        'user_credentials'      => $key,
-        'notification[message]' => $message,
+        "user_credentials" => $key,
+        %$notification_params,
     );
-
     $notifier->post_request($uri, $body, %cbs);
 
     ## wait here for synchronous calls
     $finish->();
     return;
+}
+
+sub normalize {
+    my $notifier = shift;
+    my %param    = @_;
+
+    my %nparam;
+    my $N = "notification";
+
+    my @keys = qw/
+        message message_level action_loc_key run_command
+        title long_message long_message_preview
+    /;
+    for (@keys) {
+        next unless exists $param{$_};
+        $nparam{"${N}[$_]"} = $param{$_} || "";
+    }
+
+    my $silent = 0;
+    my $sound  = $param{sound};
+    if ($sound) {
+        unless ($sound =~ /^[1..7]$/) {
+            $sound = "1";
+        }
+        $sound .= ".caf";
+    }
+
+    if (my $s = $param{silent}) {
+        $s = lc $s;
+        unless ($s eq 'off' or $s eq 'no' or $s eq 'false') {
+            $silent = 1;
+            $sound  = undef;
+        }
+    }
+    $nparam{"${N}[silent]"} = $silent;
+    $nparam{"${N}[sound]"}  = $sound || "";
+
+    return \%nparam;
 }
 
 sub post_request {
@@ -200,7 +239,19 @@ Net::AppNotifications - send notifications to your iPhone.
   ## Asynchronous non-blocking notification
   my $sent = AnyEvent->condvar;
   my $handle = $notifier->send(
-    message    => "Hello (when you have time)",
+    message               => "Hello!",  # shows up in the notification
+    long_message          => "<b>html allowed</b>",    # in the iPhone app
+    long_message_preview  => "the notif preview",      # in the iPhone app
+    title                 => "the notification title", # in the iPhone app
+    sound                 => 2,       # override default audible bell
+    silent                => 0,       # if true, make sure there is no bell
+    message_level         => -2,      # priority ([-2, 2])
+    action_loc_key        => "Approve me", # button on the notification
+
+    # what happened when clicked
+    run_command  => "http://maps.google.com/maps?q=cupertino",
+
+    ## delivery callbacks
     on_error   => $error_cb,
     on_timeout => $timeout_cb,
     on_success => sub { $sent->send },
@@ -216,10 +267,27 @@ Net::AppNotifications - send notifications to your iPhone.
 =head1 DESCRIPTION
 
 Net::AppNotifications is a wrapper around appnotifications.com. It allows
-you to push notifications to your iPhone registered with the service.
+you to push notifications to your iPhone(s) registered with the service.
 
 A visual and audible alert (like for SMS) will arrive on your device
 in a limited timeframe.
+
+appnotifications allows you to tweak different aspect of the notification
+received:
+
+=over 4
+
+=item * the message
+
+=item * the sound played, if any
+
+=item * the title of the accept button of the notification
+
+=item * what happens once accepted
+
+=item * ... more, see the L<SYNOPSIS>
+
+=back
 
 If you already have an APNS key, I recommend using L<AnyEvent::APNS>,
 directly. 
@@ -235,6 +303,6 @@ it under the same terms as Perl itself.
 
 =head1 SEE ALSO
 
-L<AnyEvent::APNS>
+L<AnyEvent::APNS>, L<http://www.appnotifications.com>
 
 =cut
