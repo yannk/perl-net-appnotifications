@@ -2,7 +2,7 @@ package Net::AppNotifications;
 
 use strict;
 use 5.008_001;
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 use AnyEvent::HTTP;
 use Carp;
 use URI::Escape 'uri_escape_utf8';
@@ -115,6 +115,7 @@ sub normalize {
     my @keys = qw/
         message message_level action_loc_key run_command
         title long_message long_message_preview
+        icon_url subtitle
     /;
     for (@keys) {
         next unless exists $param{$_};
