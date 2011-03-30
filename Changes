@@ -1,4 +1,7 @@
 Revision history for Perl extension Net::AppNotifications
 
+0.02
+    - support extra notification parameters
+
 0.01  Fri Jul 24 21:45:27 2009
         - original version
