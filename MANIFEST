@@ -18,7 +18,8 @@ inc/Module/Install/WriteAll.pm
 lib/Net/AppNotifications.pm
 Makefile.PL
 MANIFEST			This list of files
-META.yml
+META.*
+MYMETA.*
 README
 t/00_compile.t
 xt/perlcritic.t

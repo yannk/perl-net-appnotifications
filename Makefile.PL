@@ -4,19 +4,19 @@ sub github              { }
 sub auto_set_repository { }
 
 use inc::Module::Install;
-name 'Net-AppNotifications';
-all_from 'lib/Net/AppNotifications.pm';
+name('Net-AppNotifications');
+all_from('lib/Net/AppNotifications.pm');
 
-include 'Module:AutoInstall';
+include('Module:AutoInstall');
 
-requires 'Find::Lib';
-requires 'AnyEvent';
-requires 'AnyEvent::HTTP';
-requires 'URI';
+requires('Find::Lib');
+requires('AnyEvent');
+requires('AnyEvent::HTTP');
+requires('URI');
 
-build_requires 'Test::More';
-auto_include_deps;
+build_requires('Test::More');
+auto_include_deps();
 author_tests('xt');
-auto_set_repository;
-githubmeta;
-WriteAll;
+auto_set_repository();
+githubmeta();
+WriteAll();
